@@ -69,6 +69,7 @@
 #include "navmesh.hpp"
 #include "actorspaths.hpp"
 #include "recastmesh.hpp"
+#include "objectpaging.hpp"
 
 namespace
 {
@@ -313,6 +314,12 @@ namespace MWRender
             mTerrain.reset(new Terrain::QuadTreeWorld(
                 sceneRoot, mRootNode, mResourceSystem, mTerrainStorage, Mask_Terrain, Mask_PreCompile, Mask_Debug,
                 compMapResolution, compMapLevel, lodFactor, vertexLodMod, maxCompGeometrySize));
+            if (Settings::Manager::getBool("object paging", "Terrain"))
+            {
+                mObjectPaging.reset(new ObjectPaging(mResourceSystem->getSceneManager()));
+                static_cast<Terrain::QuadTreeWorld*>(mTerrain.get())->addChunkManager(mObjectPaging.get());
+                mResourceSystem->addResourceManager(mObjectPaging.get());
+            }
         }
         else
             mTerrain.reset(new Terrain::TerrainGrid(sceneRoot, mRootNode, mResourceSystem, mTerrainStorage, Mask_Terrain, Mask_PreCompile, Mask_Debug));
@@ -1537,5 +1544,10 @@ namespace MWRender
             return;
 
         mRecastMesh->update(mNavigator.getRecastMeshTiles(), mNavigator.getSettings());
+    }
+
+    void RenderingManager::setActiveGrid(const osg::Vec4i &grid)
+    {
+        mTerrain->setActiveGrid(grid);
     }
 }
