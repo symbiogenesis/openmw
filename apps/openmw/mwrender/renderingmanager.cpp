@@ -1189,6 +1189,8 @@ namespace MWRender
         mSky->setMoonColour(false);
 
         notifyWorldSpaceChanged();
+        if (mObjectPaging)
+            mObjectPaging->clear();
     }
 
     MWRender::Animation* RenderingManager::getAnimation(const MWWorld::Ptr &ptr)
@@ -1549,5 +1551,10 @@ namespace MWRender
     void RenderingManager::setActiveGrid(const osg::Vec4i &grid)
     {
         mTerrain->setActiveGrid(grid);
+    }
+    void RenderingManager::pagingEnableObject(const ESM::RefNum & refnum, bool enabled)
+    {
+        if (mObjectPaging)
+            mObjectPaging->enableObject(refnum, enabled);
     }
 }
