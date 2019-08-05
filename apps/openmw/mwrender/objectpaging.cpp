@@ -253,11 +253,13 @@ namespace MWRender
 
             osg::ref_ptr<const osg::Node> cnode = mSceneManager->getTemplate(model, false);
 
-            if (cnode->getBound().radius() * ref.mScale < size*mMinSize)
+            float d = (viewPoint - pos).length();
+
+            if (cnode->getBound().radius() * ref.mScale < d*mMinSize)
                 continue;
 
             CopyOp co = CopyOp();
-            co.mDistance = relativeViewPoint.length();
+            co.mDistance = d;
             osg::ref_ptr<osg::Node> node = osg::clone(cnode.get(), co);
             node->setUserDataContainer(nullptr);
 
