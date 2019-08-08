@@ -33,8 +33,6 @@ namespace MWRender
 
         virtual void setExpiryDelay(double expiryDelay) override { mExpiryDelay = 0.5f; }
 
-        virtual unsigned int getNodeMask() override;
-
         void enableObject(const ESM::RefNum & refnum, bool enabled);
         void clear();
 

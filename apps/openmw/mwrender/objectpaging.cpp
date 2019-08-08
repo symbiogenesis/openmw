@@ -298,11 +298,6 @@ namespace MWRender
         return group;
     }
 
-    unsigned int ObjectPaging::getNodeMask()
-    {
-        return Mask_Static;
-    }
-
     void ObjectPaging::enableObject(const ESM::RefNum & refnum, bool enabled)
     {
         OpenThreads::ScopedWriteLock lock(mDisabledMutex);
