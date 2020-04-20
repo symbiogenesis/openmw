@@ -30,7 +30,7 @@ void ESM::GlobalMap::save (ESMWriter &esm) const
     esm.writeHNT("BNDS", mBounds);
 
     esm.startSubRecord("DATA");
-    esm.write(&mImageData[0], mImageData.size());
+    esm.write(mImageData.data(), mImageData.size());
     esm.endRecord("DATA");
 
     for (std::set<CellId>::const_iterator it = mMarkers.begin(); it != mMarkers.end(); ++it)
