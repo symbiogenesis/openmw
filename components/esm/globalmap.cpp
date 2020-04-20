@@ -13,7 +13,7 @@ void ESM::GlobalMap::load (ESMReader &esm)
     esm.getSubNameIs("DATA");
     esm.getSubHeader();
     mImageData.resize(esm.getSubSize());
-    esm.getExact(&mImageData[0], mImageData.size());
+    esm.getExact(mImageData.data(), mImageData.size());
 
     while (esm.isNextSub("MRK_"))
     {
