@@ -44,12 +44,21 @@ MacOS:
 Windows:
   tags:
     - windows
+  before_script:
+    - Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+    - choco install git --force --params "/GitAndUnixToolsOnPath"
+    - choco install 7zip
+    - choco install cmake.install --installargs 'ADD_CMAKE_TO_PATH=System'
+    - refreshenv
   stage: build
   allow_failure: true
   script:
-    - Set-Variable -Name "time" -Value (date -Format "%H:%m")
-    - echo ${time}
+    - time = (date -Format "%H:%m")
+    - echo $time
     - echo "started by ${GITLAB_USER_NAME}"
+    - cd $CI_PROJECT_DIR
+    - sh CI/before_script.msvc.sh -c RelWIthDebInfo -p Win64 -v 2017
+    - cmake MSVC2017_64 --target ALL_BUILD -config RelWithDebInfo
 #   TODO: to anyone wanting to do further work here, we need to figure out how to get the below working
 #   TODO: on gitlab's new shared windows runners. They currently don't have bash or anything else installed
 #   TODO: it is currently just a bare windows 10 with powershell.
