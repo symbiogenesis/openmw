@@ -57,8 +57,8 @@ Windows:
     - echo $Time
     - echo "started by ${GITLAB_USER_NAME}"
     - cd $CI_PROJECT_DIR
-    - sh CI/before_script.msvc.sh -c RelWithDebInfo -p Win64 -v 2017 -k -V
-    - cmake MSVC2017_64 --target ALL_BUILD -config RelWithDebInfo
+    - sh CI/before_script.msvc.sh -c RelWithDebInfo -p Win64 -v 2019 -k -V
+    - cmake MSVC2019_64 --target ALL_BUILD -config RelWithDebInfo
 #   TODO: to anyone wanting to do further work here, we need to figure out how to get the below working
 #   TODO: on gitlab's new shared windows runners. They currently don't have bash or anything else installed
 #   TODO: it is currently just a bare windows 10 with powershell.
@@ -70,8 +70,8 @@ Windows:
   cache:
     paths:
     - deps
-    - MSVC2017_64/deps
+    - MSVC2019_64/deps
   artifacts:
     paths:
     - "*.zip"
-    - MSVC2017_64/CMakeFiles/*.log
+    - MSVC2019_64/CMakeFiles/*.log
