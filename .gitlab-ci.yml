@@ -53,8 +53,8 @@ Windows:
   stage: build
   allow_failure: true
   script:
-    - time = (date -Format "%H:%m")
-    - echo $time
+    - $Time = (date -Format "%H:%m")
+    - echo $Time
     - echo "started by ${GITLAB_USER_NAME}"
     - cd $CI_PROJECT_DIR
     - sh CI/before_script.msvc.sh -c RelWIthDebInfo -p Win64 -v 2017
