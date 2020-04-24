@@ -70,6 +70,8 @@ Windows:
   cache:
     paths:
     - deps
+    - MSVC2017_64/deps
   artifacts:
     paths:
     - "*.zip"
+    - MSVC2017_64/CMakeFiles/*.log
