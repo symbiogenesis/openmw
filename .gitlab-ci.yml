@@ -72,6 +72,7 @@ Windows:
     - deps
     - MSVC2019_64/deps
   artifacts:
+    when: always
     paths:
     - "*.zip"
     - MSVC2019_64/CMakeFiles/*.log
