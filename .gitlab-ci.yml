@@ -51,7 +51,6 @@ Windows:
     - choco install cmake.install --installargs 'ADD_CMAKE_TO_PATH=System' -y
     - refreshenv
   stage: build
-  allow_failure: true
   script:
     - $Time = (date -Format "%H:%m")
     - echo $Time
