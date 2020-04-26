@@ -55,6 +55,8 @@ Windows:
     - $Time = (date -Format "%H:%m")
     - echo $Time
     - echo "started by ${GITLAB_USER_NAME}"
+    - echo "Total memory: $((Get-WmiObject win32_operatingsystem -ComputerName $env:COMPUTERNAME).TotalVisibleMemorySize)"
+    - Start-Process powershell -ArgumentList "-c",'$Computer = Get-WmiObject win32_operatingsystem -ComputerName $env:COMPUTERNAME ; while ($True) { Start-Sleep -Seconds 5 ; $Computer = Get-WmiObject win32_operatingsystem -ComputerName $env:COMPUTERNAME ; echo Used memory $($Computer.TotalVisibleMemorySize - $Computer.FreePhysicalMemory) }'
     - cd $CI_PROJECT_DIR
     - sh CI/before_script.msvc.sh -c RelWithDebInfo -p Win64 -v 2019 -k -V
     - cmake --build MSVC2019_64 --target ALL_BUILD --config RelWithDebInfo
