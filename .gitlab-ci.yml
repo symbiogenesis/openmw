@@ -56,7 +56,7 @@ Windows:
     - echo $Time
     - echo "started by ${GITLAB_USER_NAME}"
     - cd $CI_PROJECT_DIR
-    - sh CI/before_script.msvc.sh -c Release -p Win64 -v 2019 -k -V -u
+    - sh CI/before_script.msvc.sh -c Release -p Win64 -v 2019 -k -V
     - cmake --build MSVC2019_64 --target openmw --config Release -v *>&1
     - echo $?
 #   TODO: to anyone wanting to do further work here, we need to figure out how to get the below working
@@ -75,4 +75,11 @@ Windows:
     when: always
     paths:
     - "*.zip"
-    - MSVC2019_64/CMakeFiles/*.log
+    - MSVC2019_64/*.log
+    - MSVC2019_64/*/*.log
+    - MSVC2019_64/*/*/*.log
+    - MSVC2019_64/*/*/*/*.log
+    - MSVC2019_64/*/*/*/*/*.log
+    - MSVC2019_64/*/*/*/*/*/*.log
+    - MSVC2019_64/*/*/*/*/*/*/*.log
+    - MSVC2019_64/*/*/*/*/*/*/*/*.log
