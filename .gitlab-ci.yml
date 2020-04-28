@@ -45,6 +45,8 @@ Windows:
   tags:
     - windows
   before_script:
+    - Write-Host "This is stdout"
+    - Write-Error "This is stderr"
     - Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
     - choco install git --force --params "/GitAndUnixToolsOnPath" -y
     - choco install 7zip -y
@@ -59,6 +61,7 @@ Windows:
     - cd $CI_PROJECT_DIR
     - sh CI/before_script.msvc.sh -c Release -p Win64 -v 2019 -k -V
     - cmake --build MSVC2019_64 --target ALL_BUILD --config Release -v
+    - echo $?
 #   TODO: to anyone wanting to do further work here, we need to figure out how to get the below working
 #   TODO: on gitlab's new shared windows runners. They currently don't have bash or anything else installed
 #   TODO: it is currently just a bare windows 10 with powershell.
