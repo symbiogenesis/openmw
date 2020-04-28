@@ -45,6 +45,9 @@ Windows:
   tags:
     - windows
   before_script:
+    - echo -v:diag
+    - echo "-v:diag"
+    - "echo -v:diag"
     - Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
     - choco install git --force --params "/GitAndUnixToolsOnPath" -y
     - choco install 7zip -y
