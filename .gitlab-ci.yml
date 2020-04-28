@@ -57,7 +57,7 @@ Windows:
     - echo "started by ${GITLAB_USER_NAME}"
     - Start-Process powershell CI\MemoryLogger.ps1 -NoNewWindow
     - cd $CI_PROJECT_DIR
-    - sh CI/before_script.msvc.sh -c Release -p Win64 -v 2019 -k -V
+    - sh CI/before_script.msvc.sh -c Release -p Win64 -v 2019 -k -V -u
     - cmake --build MSVC2019_64 --target openmw --config Release -v *>&1
     - echo $?
 #   TODO: to anyone wanting to do further work here, we need to figure out how to get the below working
