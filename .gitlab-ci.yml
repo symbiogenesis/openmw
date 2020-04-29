@@ -52,7 +52,7 @@ Windows:
     - refreshenv
   stage: build
   script:
-    - Start-Process powershell -Wait -RedirectStandardOutput stdout.log -RedirectStandardError stderr.log -ArgumentList "CI\GitLabWindows.ps1","-GitLabUserName",$GITLAB_USER_NAME,"-CIProjectDir",$CI_PROJECT_DIR,"-CIBuildRefName",$CI_BUILD_REF_NAME,"-CIBuildID",$CI_BUILD_ID
+    - Start-Process powershell -Wait -RedirectStandardOutput stdout.log -RedirectStandardError stderr.log -ArgumentList "-File","CI\GitLabWindows.ps1","-GitLabUserName",$GITLAB_USER_NAME,"-CIProjectDir",$CI_PROJECT_DIR,"-CIBuildRefName",$CI_BUILD_REF_NAME,"-CIBuildID",$CI_BUILD_ID
     # Hopefully, this failing and giving a bad exit code will make the build fail.
     - Get-ChildItem SuccessfulBuild.txt
 #   TODO: to anyone wanting to do further work here, we need to figure out how to get the below working
