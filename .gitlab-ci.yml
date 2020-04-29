@@ -52,7 +52,7 @@ Windows:
     - refreshenv
   stage: build
   script:
-    - Start-Process CI\GitLabWindows.ps1 -Wait -RedirectStandardOutput stdout.log -RedirectStandardError stderr.log -ArgumentList "-GitLabUserName",$GITLAB_USER_NAME,"-CIProjectDir",$CI_PROJECT_DIR,"-CIBuildRefName",$CI_BUILD_REF_NAME,"-CIBuildID",$CI_BUILD_ID
+    - Start-Process powershell -Wait -RedirectStandardOutput stdout.log -RedirectStandardError stderr.log -ArgumentList "CI\GitLabWindows.ps1","-GitLabUserName",$GITLAB_USER_NAME,"-CIProjectDir",$CI_PROJECT_DIR,"-CIBuildRefName",$CI_BUILD_REF_NAME,"-CIBuildID",$CI_BUILD_ID
 #   TODO: to anyone wanting to do further work here, we need to figure out how to get the below working
 #   TODO: on gitlab's new shared windows runners. They currently don't have bash or anything else installed
 #   TODO: it is currently just a bare windows 10 with powershell.
