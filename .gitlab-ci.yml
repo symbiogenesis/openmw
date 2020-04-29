@@ -58,6 +58,7 @@ Windows:
     - $MemoryLogger = Start-Process powershell CI\MemoryLogger.ps1 -NoNewWindow -PassThru
     - cd $CI_PROJECT_DIR
     - sh CI/before_script.msvc.sh -c Release -p Win64 -v 2019 -k -V
+    - While ($True) { Write-Host fuck }
     - cmake --build MSVC2019_64 --target ALL_BUILD --config Release
     - cd MSVC2019_64\Release
     - 7z a -tzip ..\..\OpenMW_MSVC2019_64_${CI_BUILD_REF_NAME}_${CI_BUILD_ID}.zip '*'
