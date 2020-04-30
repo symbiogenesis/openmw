@@ -5,6 +5,9 @@ param(
     [String] $CIBuildID
 )
 
+Write-Host All unrecognised arguments:
+$Args | ForEach-Object { Write-Host $_ }
+
 $Successful = $True
 New-Item -Path IncompleteBuild.txt
 
