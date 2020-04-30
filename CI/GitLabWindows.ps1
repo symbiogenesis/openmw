@@ -1,14 +1,14 @@
-param(
-    [String] $GitLabUserName,
-    [String] $CIProjectDir,
-    [String] $CIBuildRefName,
-    [String] $CIBuildID
+Param(
+    [Parameter(Mandatory=$true)][string] $GitLabUserName,
+    [Parameter(Mandatory=$true)][string] $CIProjectDir,
+    [Parameter(Mandatory=$true)][string] $CIBuildRefName,
+    [Parameter(Mandatory=$true)][string] $CIBuildID
 )
 
 Write-Host All unrecognised arguments:
 $Args | ForEach-Object { Write-Host $_ }
 
-$Successful = $True
+$Successful = $true
 New-Item -Path IncompleteBuild.txt
 
 $Time = (Get-Date -Format "%H:%m")
