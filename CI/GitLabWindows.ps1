@@ -11,7 +11,7 @@ $Args | ForEach-Object { Write-Host $_ }
 $Successful = $true
 New-Item -Path IncompleteBuild.txt
 
-$Time = (Get-Date -Format "%H:%m")
+$Time = (Get-Date -Format "%HH:%mm")
 echo $Time
 echo "started by ${$GitLabUserName}"
 
