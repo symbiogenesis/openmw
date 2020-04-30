@@ -19,8 +19,13 @@ $MemoryLogger = Start-Process powershell CI\MemoryLogger.ps1 -RedirectStandardOu
 
 sh CI/before_script.msvc.sh -c Release -p Win64 -v 2019 -k -V
 $Successful = $Successful -and $?
-cmake --build MSVC2019_64 --target ALL_BUILD --config Release
-$Successful = $Successful -and $?
+$InnerSuccess = $false
+For ($i = 0; $i -lt 3 -and -not $InnerSuccess; $i++)
+{
+    cmake --build MSVC2019_64 --target ALL_BUILD --config Release
+    $InnerSuccess = $InnerSuccess -or $?
+}
+$Successful = $Successful -or $InnerSuccess
 
 Push-Location MSVC2019_64\Release
 7z a -tzip ..\..\OpenMW_MSVC2019_64_${$CIBuildRefName}_${$CIBuildID}.zip '*'
