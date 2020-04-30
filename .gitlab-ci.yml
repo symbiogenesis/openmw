@@ -45,6 +45,7 @@ Windows:
   tags:
     - windows
   before_script:
+    - echo "-File","CI\GitLabWindows.ps1","-GitLabUserName",$GITLAB_USER_NAME,"-CIProjectDir",$CI_PROJECT_DIR,"-CIBuildRefName",$CI_BUILD_REF_NAME,"-CIBuildID",$CI_BUILD_ID
     - Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
     - choco install git --force --params "/GitAndUnixToolsOnPath" -y
     - choco install 7zip -y
