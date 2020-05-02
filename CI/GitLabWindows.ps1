@@ -22,7 +22,7 @@ $Successful = $Successful -and $?
 $InnerSuccess = $false
 For ($i = 0; $i -lt 3 -and -not $InnerSuccess; $i++)
 {
-    cmake --build MSVC2019_64 --target ALL_BUILD --config Release
+    cmake --build MSVC2019_64 --target ALL_BUILD --config Release -v
     $InnerSuccess = $InnerSuccess -or $?
 }
 $Successful = $Successful -and $InnerSuccess
