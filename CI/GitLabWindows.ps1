@@ -2,7 +2,8 @@ Param(
     [Parameter(Mandatory=$true)][string] $GitLabUserName,
     [Parameter(Mandatory=$true)][string] $CIProjectDir,
     [Parameter(Mandatory=$true)][string] $CIBuildRefName,
-    [Parameter(Mandatory=$true)][string] $CIBuildID
+    [Parameter(Mandatory=$true)][string] $CIBuildID,
+    [Parameter(Mandatory=$true)][string] $Configuration
 )
 
 $Successful = $true
@@ -14,17 +15,17 @@ echo "started by ${$GitLabUserName}"
 
 $MemoryLogger = Start-Process powershell CI\MemoryLogger.ps1 -RedirectStandardOutput memorylog.log -PassThru
 
-sh CI/before_script.msvc.sh -c Release -p Win64 -v 2019 -k -V
+sh CI/before_script.msvc.sh -c $Configuration -p Win64 -v 2019 -k -V
 $Successful = $Successful -and $?
 $InnerSuccess = $false
 For ($i = 0; $i -lt 3 -and -not $InnerSuccess; $i++)
 {
-    cmake --build MSVC2019_64 --target ALL_BUILD --config Release -v
+    cmake --build MSVC2019_64 --target ALL_BUILD --config $Configuration -v
     $InnerSuccess = $InnerSuccess -or $?
 }
 $Successful = $Successful -and $InnerSuccess
 
-Push-Location MSVC2019_64\Release
+Push-Location MSVC2019_64\$Configuration
 7z a -tzip ..\..\OpenMW_MSVC2019_64_${$CIBuildRefName}_${$CIBuildID}.zip '*'
 Pop-Location
 
