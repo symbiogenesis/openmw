@@ -26,7 +26,7 @@ For ($i = 0; $i -lt 3 -and -not $InnerSuccess; $i++)
 $Successful = $Successful -and $InnerSuccess
 
 Push-Location MSVC2019_64\$Configuration
-7z a -tzip ..\..\OpenMW_MSVC2019_64_${$CIBuildRefName}_${$CIBuildID}.zip '*'
+7z a -tzip ..\..\OpenMW_MSVC2019_64_${CIBuildRefName}_${CIBuildID}.zip '*'
 Pop-Location
 
 Stop-Process $MemoryLogger
