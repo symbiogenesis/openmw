@@ -5,6 +5,8 @@ Param(
     [Parameter(Mandatory=$true)][string] $CIBuildID
 )
 
+exit
+
 Write-Host All unrecognised arguments:
 $Args | ForEach-Object { Write-Host $_ }
 

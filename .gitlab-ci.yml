@@ -52,6 +52,8 @@ Windows:
     - refreshenv
   stage: build
   script:
+    - Write-Host $PSCommandPath
+    - 7z a -tzip ciscript.zip "$PSCommandPath"
     - Start-Process powershell -Wait -RedirectStandardError stderr.log -ArgumentList "-File","CI\GitLabWindows.ps1","-GitLabUserName","$GITLAB_USER_NAME","-CIProjectDir","$CI_PROJECT_DIR","-CIBuildRefName","$CI_BUILD_REF_NAME","-CIBuildID","$CI_BUILD_ID" | ForEach-Object { "$(Get-Date -Format "%HH:%mm:%ss") $_" } | Out-File stdout.log
     # Hopefully, this failing and giving a bad exit code will make the build fail.
     - Get-ChildItem SuccessfulBuild.txt
