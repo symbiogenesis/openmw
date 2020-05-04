@@ -5,16 +5,6 @@ Param(
     [Parameter(Mandatory=$true)][string] $CIBuildID
 )
 
-Write-Host GitLabUserName $GitLabUserName
-Write-Host CIProjectDir $CIProjectDir
-Write-Host CIBuildRefName $CIBuildRefName
-Write-Host CIBuildID $CIBuildID
-
-Write-Host All unrecognised arguments:
-$Args | ForEach-Object { Write-Host $_ }
-
-exit
-
 $Successful = $true
 New-Item -Path IncompleteBuild.txt
 
