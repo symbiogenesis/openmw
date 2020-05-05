@@ -18,7 +18,7 @@ $MemoryLogger = Start-Process powershell CI\MemoryLogger.ps1 -RedirectStandardOu
 sh CI/before_script.msvc.sh -c $Configuration -p Win64 -v 2019 -k -V
 $Successful = $Successful -and $?
 $InnerSuccess = $false
-For ($i = 0; $i -lt 3 -and -not $InnerSuccess; $i++)
+For ($i = 0; $i -lt 1 -and -not $InnerSuccess; $i++)
 {
     cmake --build MSVC2019_64 --target ALL_BUILD --config $Configuration -v
     $InnerSuccess = $InnerSuccess -or $?
