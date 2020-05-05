@@ -5,7 +5,7 @@ Param(
     [Parameter(Mandatory=$true)][string] $CIBuildID,
     [Parameter(Mandatory=$true)][string] $Configuration
 )
-exit
+
 $Successful = $true
 New-Item -Path IncompleteBuild.txt
 
