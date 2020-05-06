@@ -9,7 +9,7 @@ Param(
 $Successful = $true
 New-Item -Path IncompleteBuild.txt
 
-$Time = (Get-Date -Format "%HH:%mm:%ss")
+$Time = (Get-Date -Format "HH:mm:ss")
 echo $Time
 echo "started by ${$GitLabUserName}"
 
