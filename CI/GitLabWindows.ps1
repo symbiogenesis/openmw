@@ -20,7 +20,7 @@ $Successful = $Successful -and $?
 $InnerSuccess = $false
 For ($i = 0; $i -lt 1 -and -not $InnerSuccess; $i++)
 {
-    cmake --build MSVC2019_64 --target ALL_BUILD --config $Configuration -v -- -fileLogger "-fileLoggerParameters:LogFile=MSBuild.log;Append;Verbosity=diagnostic;Encoding=UTF-8;ShowTimestamp"
+    cmake --build MSVC2019_64 --target ALL_BUILD --config $Configuration -v -- -fileLogger "-fileLoggerParameters:LogFile=MSBuild.log;Append;Summary;Verbosity=diagnostic;Encoding=UTF-8;ShowTimestamp"
     $InnerSuccess = $InnerSuccess -or $?
 }
 $Successful = $Successful -and $InnerSuccess
