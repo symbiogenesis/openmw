@@ -60,13 +60,13 @@ Windows:
     - echo ${time}
     - echo "started by ${GITLAB_USER_NAME}"
     - sh CI/before_script.msvc.sh -c RelWithDebInfo -p Win64 -v 2019 -k -V -N ; echo ye
-    - #cd MSVC2016_64_Ninja
-    - #.\ActivateMSVC.ps1
-    - #cmake --build . --config RelWithDebInfo
-    - #cd RelWithDebInfo
-    - #7z a -tzip ..\..\OpenMW_MSVC2019_64_${CIBuildRefName}_${CIBuildID}_symbols.zip '*.pdb'
-    - #Get-ChildItem -Recurse *.pdb | Remove-Item
-    - #7z a -tzip ..\..\OpenMW_MSVC2019_64_${CIBuildRefName}_${CIBuildID}.zip '*'
+    #- cd MSVC2016_64_Ninja
+    #- .\ActivateMSVC.ps1
+    #- cmake --build . --config RelWithDebInfo
+    #- cd RelWithDebInfo
+    #- 7z a -tzip ..\..\OpenMW_MSVC2019_64_${CIBuildRefName}_${CIBuildID}_symbols.zip '*.pdb'
+    #- Get-ChildItem -Recurse *.pdb | Remove-Item
+    #- 7z a -tzip ..\..\OpenMW_MSVC2019_64_${CIBuildRefName}_${CIBuildID}.zip '*'
 
   cache:
     paths:
