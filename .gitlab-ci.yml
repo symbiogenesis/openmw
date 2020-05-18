@@ -59,7 +59,7 @@ Windows:
     - echo ${time}
     - echo "started by ${GITLAB_USER_NAME}"
     - sh CI/before_script.msvc.sh -c RelWithDebInfo -p Win64 -v 2019 -k -V -N
-    - cd MSVC2016_64_Ninja
+    - cd MSVC2019_64_Ninja
     - .\ActivateMSVC.ps1
     - cmake --build . --config RelWithDebInfo
     - cd RelWithDebInfo
