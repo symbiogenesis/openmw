@@ -33,6 +33,7 @@ function windowsSystemPathAsUnix {
 	fi
 }
 
+echo "in the script"
 # capture CMD environment so we know what's been changed
 declare -A originalCmdEnv
 originalIFS="$IFS"
@@ -42,8 +43,10 @@ for pair in $(cmd //c "set"); do
     originalCmdEnv["${separatedPair[0]}"]="${separatedPair[1]}"
 done
 
+echo "got the before env"
 # capture CMD environment in a shell with MSVC activated
 cmdEnv="$(cmd //c "$(unixPathAsWindows "$(dirname "${BASH_SOURCE[0]}")")\ActivateMSVC.bat" "&&" set)"
+echo "got the after env"
 
 declare -A cmdEnvChanges
 for pair in $cmdEnv; do
