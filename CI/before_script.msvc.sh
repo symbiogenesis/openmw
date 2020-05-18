@@ -948,7 +948,6 @@ if ! [ -z $ACTIVATE_MSVC ]; then
 	command -v vswhere >/dev/null 2>&1 || { echo "Error: vswhere is not on the path."; wrappedExit 1; }
 
 	MSVC_INSTALLATION_PATH=$(vswhere -legacy -version "[$MSVC_VER,$(awk "BEGIN { print $MSVC_REAL_VER + 1; exit }"))" -property installationPath)
-	echo "MSVC_INSTALLATION_PATH $MSVC_INSTALLATION_PATH"
 	if [ $MSVC_REAL_VER -ge 15 ]; then
 		echo "@\"${MSVC_INSTALLATION_PATH}\Common7\Tools\VsDevCmd.bat\" -no_logo -arch=$([ $BITS -eq 64 ] && echo "amd64" || echo "x86") -host_arch=$([ $(uname -m) == 'x86_64' ] && echo "amd64" || echo "x86")" > ActivateMSVC.bat
 	else
@@ -967,19 +966,12 @@ if ! [ -z $ACTIVATE_MSVC ]; then
 		fi
 		echo "@\"${MSVC_INSTALLATION_PATH}\VC\vcvarsall.bat\" $compiler" > ActivateMSVC.bat
 	fi
-
-	echo "Activation script contains:"
-	cat ActivateMSVC.bat
 	
 	cp "../CI/activate_msvc.sh" .
-	echo "Copied Bash wrapper"
 	sed -i "s/\$MSVC_DISPLAY_YEAR/$MSVC_DISPLAY_YEAR/g" activate_msvc.sh
-	echo "Edited Bash wrapper"
 	source ./activate_msvc.sh
-	echo "Ran Bash wrapper"
 	
 	cp "../CI/ActivateMSVC.ps1" .
-	echo "Copied PowerShell wrapper"
 	sed -i "s/\$MSVC_DISPLAY_YEAR/$MSVC_DISPLAY_YEAR/g" ActivateMSVC.ps1
 
 	echo "done."
