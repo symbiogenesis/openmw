@@ -53,6 +53,7 @@ Windows:
   - choco install ninja -y
   - choco install python -y
   - refreshenv
+  - vswhere
   stage: build
   script:
     - $time = (Get-Date -Format "HH:mm:ss")
