@@ -58,11 +58,11 @@ Windows:
     - $time = (Get-Date -Format "HH:mm:ss")
     - echo ${time}
     - echo "started by ${GITLAB_USER_NAME}"
-    - sh CI/before_script.msvc.sh -c RelWithDebInfo -p Win64 -v 2019 -k -V -N
+    - sh CI/before_script.msvc.sh -c Release -p Win64 -v 2019 -k -V -N
     - cd MSVC2019_64_Ninja
     - .\ActivateMSVC.ps1
-    - cmake --build . --config RelWithDebInfo
-    - cd RelWithDebInfo
+    - cmake --build . --config Release
+    - cd Release
     - |
       if (Get-ChildItem -Recurse *.pdb) {
         7z a -tzip ..\..\OpenMW_MSVC2019_64_${CIBuildRefName}_${CIBuildID}_symbols.zip '*.pdb'
