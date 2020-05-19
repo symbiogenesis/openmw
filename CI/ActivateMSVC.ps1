@@ -1,4 +1,5 @@
 & "${env:COMSPEC}" /c ActivateMSVC.bat "&&" set | ForEach-Object {
+    Write-Output "Setting $_"
     $name, $value = $_ -split '=', 2
     Set-Content env:\"$name" $value
 }
