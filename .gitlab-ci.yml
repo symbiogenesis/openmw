@@ -63,8 +63,11 @@ Windows:
     - .\ActivateMSVC.ps1
     - cmake --build . --config RelWithDebInfo
     - cd RelWithDebInfo
-    - 7z a -tzip ..\..\OpenMW_MSVC2019_64_${CIBuildRefName}_${CIBuildID}_symbols.zip '*.pdb'
-    - Get-ChildItem -Recurse *.pdb | Remove-Item
+    - |
+      if (Get-ChildItem -Recurse *.pdb) {
+        7z a -tzip ..\..\OpenMW_MSVC2019_64_${CIBuildRefName}_${CIBuildID}_symbols.zip '*.pdb'
+        Get-ChildItem -Recurse *.pdb | Remove-Item
+      }
     - 7z a -tzip ..\..\OpenMW_MSVC2019_64_${CIBuildRefName}_${CIBuildID}.zip '*'
 
   cache:
