@@ -358,6 +358,19 @@ void CollectLowestTransformsVisitor::doTransform(osg::Object* obj,osg::Matrix& m
     {
         osgUtil::TransformAttributeFunctor tf(matrix);
         drawable->accept(tf);
+
+        osg::Geometry *geom = drawable->asGeometry();
+        osg::Vec3Array* tangents = geom ? static_cast<osg::Vec3Array*>(geom->getVertexAttribArray(7)) : nullptr;
+        if (tangents)
+        {
+            for (unsigned int i=0; i<tangents->size(); ++i)
+            {
+                osg::Vec3f& itr = (*tangents)[i];
+                itr = osg::Matrix::transform3x3(tf._im, itr);
+                itr.normalize();
+            }
+        }
+
         drawable->dirtyBound();
         drawable->dirtyDisplayList();
 
@@ -614,12 +627,12 @@ void Optimizer::FlattenStaticTransformsVisitor::apply(osg::Drawable& drawable)
     if((geometry) && (isOperationPermissibleForObject(&drawable)))
     {
         osg::VertexBufferObject* vbo = nullptr;
-        if(geometry->getVertexArray() && geometry->getVertexArray()->referenceCount() > 1) {
+        if(geometry->getVertexArray() && geometry->getVertexArray()->referenceCount() > 1)
             geometry->setVertexArray(cloneArray(geometry->getVertexArray(), vbo, geometry));
-        }
-        if(geometry->getNormalArray() && geometry->getNormalArray()->referenceCount() > 1) {
+        if(geometry->getNormalArray() && geometry->getNormalArray()->referenceCount() > 1)
             geometry->setNormalArray(cloneArray(geometry->getNormalArray(), vbo, geometry));
-        }
+        if(geometry->getVertexAttribArray(7) && geometry->getVertexAttribArray(7)->referenceCount() > 1) // tangents
+            geometry->setVertexAttribArray(7, cloneArray(geometry->getVertexAttribArray(7), vbo, geometry));
     }
     _drawableSet.insert(&drawable);
 }
