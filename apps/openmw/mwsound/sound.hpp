@@ -26,6 +26,15 @@ namespace MWSound
 
         float mFadeOutTime;
 
+        enum class State
+        {
+            Loading,
+            Playing,
+            LoadCancelled,
+        };
+
+        State mState = State::Loading;
+
     protected:
         Sound_Instance mHandle;
 
@@ -45,6 +54,8 @@ namespace MWSound
                 mFadeOutTime -= soundDuration;
             }
         }
+        void setPlaying() { mState = State::Playing; }
+        void cancelLoading() { mState = State::LoadCancelled; }
 
         const osg::Vec3f &getPosition() const { return mPos; }
         float getRealVolume() const { return mVolume * mBaseVolume; }
@@ -69,6 +80,7 @@ namespace MWSound
             mMaxDistance = maxdist;
             mFlags = flags;
             mFadeOutTime = 0.0f;
+            mState = State::Loading;
             mHandle = nullptr;
         }
 
@@ -82,6 +94,7 @@ namespace MWSound
             mMaxDistance = 1000.0f;
             mFlags = flags;
             mFadeOutTime = 0.0f;
+            mState = State::Loading;
             mHandle = nullptr;
         }
 

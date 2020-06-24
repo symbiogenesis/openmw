@@ -34,6 +34,35 @@ namespace MWSound
     {
         constexpr float sMinUpdateInterval = 1.0f / 30.0f;
 
+        constexpr std::chrono::steady_clock::duration sCreateDecoderTimeout = std::chrono::milliseconds(200);
+
+        template <class Function>
+        class WorkItem final : public SceneUtil::WorkItem
+        {
+        public:
+            WorkItem(Function&& function) : mFunction(std::move(function)) {}
+
+            void doWork() final
+            {
+                if (mAborted)
+                    return;
+                mFunction();
+            }
+
+            void abort() final { mAborted = true; }
+
+        private:
+            std::atomic_bool mAborted {false};
+            Function mFunction;
+        };
+
+        template <class Function>
+        auto makeWorkItem(Function&& function)
+        {
+            using WorkItem = WorkItem<std::decay_t<Function>>;
+            return osg::ref_ptr<WorkItem>(new WorkItem(std::forward<Function>(function)));
+        }
+
         WaterSoundUpdaterSettings makeWaterSoundUpdaterSettings()
         {
             WaterSoundUpdaterSettings settings;
@@ -46,6 +75,36 @@ namespace MWSound
             settings.mNearWaterOutdoorID = Misc::StringUtils::lowerCase(Fallback::Map::getString("Water_NearWaterOutdoorID"));
 
             return settings;
+        }
+
+        template <class Waiting>
+        void abortAll(Waiting& waiting)
+        {
+            for (const auto& v : waiting)
+                v.mWorkItem->abort();
+        }
+
+        template <class Waiting>
+        void waitForAll(Waiting& waiting)
+        {
+            for (const auto& v : waiting)
+                v.mWorkItem->waitTillDone();
+        }
+
+        float getMinDistance(const MWBase::World& world)
+        {
+            const float fAudioMinDistanceMult = world.getStore().get<ESM::GameSetting>().find("fAudioMinDistanceMult")->mValue.getFloat();
+            const float fAudioVoiceDefaultMinDistance = world.getStore().get<ESM::GameSetting>().find("fAudioVoiceDefaultMinDistance")->mValue.getFloat();
+
+            return std::max(fAudioVoiceDefaultMinDistance * fAudioMinDistanceMult, 1.0f);
+        }
+
+        float getMaxDistance(const MWBase::World& world)
+        {
+            const float fAudioMaxDistanceMult = world.getStore().get<ESM::GameSetting>().find("fAudioMaxDistanceMult")->mValue.getFloat();
+            const float fAudioVoiceDefaultMaxDistance = world.getStore().get<ESM::GameSetting>().find("fAudioVoiceDefaultMaxDistance")->mValue.getFloat();
+
+            return std::max(fAudioVoiceDefaultMaxDistance * fAudioMaxDistanceMult, getMinDistance(world));
         }
     }
 
@@ -65,6 +124,7 @@ namespace MWSound
         , mUnderwaterSound(nullptr)
         , mNearWaterSound(nullptr)
         , mPlaybackPaused(false)
+        , mWorkQueue(new SceneUtil::WorkQueue(1))
     {
         mBufferCacheMin = std::max(Settings::Manager::getInt("buffer cache min", "Sound"), 1);
         mBufferCacheMax = std::max(Settings::Manager::getInt("buffer cache max", "Sound"), 1);
@@ -124,7 +184,7 @@ namespace MWSound
     }
 
     // Return a new decoder instance, used as needed by the output implementations
-    DecoderPtr SoundManager::getDecoder()
+    DecoderPtr SoundManager::getDecoder() const
     {
         return DecoderPtr(new DEFAULT_DECODER (mVFS));
     }
@@ -237,7 +297,7 @@ namespace MWSound
         return sfx;
     }
 
-    DecoderPtr SoundManager::loadVoice(const std::string &voicefile)
+    DecoderPtr SoundManager::loadVoice(const std::string &voicefile) const
     {
         try
         {
@@ -275,33 +335,12 @@ namespace MWSound
         return mStreams.get();
     }
 
-    StreamPtr SoundManager::playVoice(DecoderPtr decoder, const osg::Vec3f &pos, bool playlocal)
+    bool SoundManager::playVoice(DecoderPtr decoder, bool playlocal, Stream* stream)
     {
-        MWBase::World* world = MWBase::Environment::get().getWorld();
-        static const float fAudioMinDistanceMult = world->getStore().get<ESM::GameSetting>().find("fAudioMinDistanceMult")->mValue.getFloat();
-        static const float fAudioMaxDistanceMult = world->getStore().get<ESM::GameSetting>().find("fAudioMaxDistanceMult")->mValue.getFloat();
-        static const float fAudioVoiceDefaultMinDistance = world->getStore().get<ESM::GameSetting>().find("fAudioVoiceDefaultMinDistance")->mValue.getFloat();
-        static const float fAudioVoiceDefaultMaxDistance = world->getStore().get<ESM::GameSetting>().find("fAudioVoiceDefaultMaxDistance")->mValue.getFloat();
-        static float minDistance = std::max(fAudioVoiceDefaultMinDistance * fAudioMinDistanceMult, 1.0f);
-        static float maxDistance = std::max(fAudioVoiceDefaultMaxDistance * fAudioMaxDistanceMult, minDistance);
-
-        bool played;
-        float basevol = volumeFromType(Type::Voice);
-        StreamPtr sound = getStreamRef();
-        if(playlocal)
-        {
-            sound->init(1.0f, basevol, 1.0f, PlayMode::NoEnv|Type::Voice|Play_2D);
-            played = mOutput->streamSound(decoder, sound.get(), true);
-        }
+        if (playlocal)
+            return mOutput->streamSound(decoder, stream, true);
         else
-        {
-            sound->init(pos, 1.0f, basevol, 1.0f, minDistance, maxDistance,
-                        PlayMode::Normal|Type::Voice|Play_3D);
-            played = mOutput->streamSound3D(decoder, sound.get(), true);
-        }
-        if(!played)
-            return nullptr;
-        return sound;
+            return mOutput->streamSound3D(decoder, stream, true);
     }
 
     // Gets the combined volume settings for the given sound type
@@ -326,15 +365,10 @@ namespace MWSound
         Log(Debug::Info) << "Playing " << filename;
         mLastPlayedMusic = filename;
 
-        stopMusic();
-
-        DecoderPtr decoder = getDecoder();
-        decoder->open(filename);
-
-        mMusic = getStreamRef();
-        mMusic->init(1.0f, volumeFromType(Type::Music), 1.0f,
-                     PlayMode::NoEnv|Type::Music|Play_2D);
-        mOutput->streamSound(decoder, mMusic.get());
+        const auto createDecoder = makeWorkItem([this, fileName = filename] { createMusicDecoder(fileName); });
+        const auto deadline = std::chrono::steady_clock::now() + sCreateDecoderTimeout;
+        mWaitingMusic.emplace_back(Music {filename, createDecoder, deadline});
+        mWorkQueue->addWorkItem(createDecoder);
     }
 
     void SoundManager::advanceMusic(const std::string& filename)
@@ -384,7 +418,7 @@ namespace MWSound
 
     bool SoundManager::isMusicPlaying()
     {
-        return mMusic && mOutput->isStreamPlaying(mMusic.get());
+        return !mWaitingMusic.empty() || (mMusic && mOutput->isStreamPlaying(mMusic.get()));
     }
 
     void SoundManager::playPlaylist(const std::string &playlist)
@@ -456,21 +490,7 @@ namespace MWSound
         if(!mOutput->isInitialized())
             return;
 
-        std::string voicefile = "Sound/"+filename;
-
-        mVFS->normalizeFilename(voicefile);
-        DecoderPtr decoder = loadVoice(voicefile);
-        if (!decoder)
-            return;
-
-        MWBase::World *world = MWBase::Environment::get().getWorld();
-        const osg::Vec3f pos = world->getActorHeadTransform(ptr).getTrans();
-
-        stopSay(ptr);
-        StreamPtr sound = playVoice(decoder, pos, (ptr == MWMechanics::getPlayer()));
-        if(!sound) return;
-
-        mSaySoundsQueue.emplace(ptr, std::move(sound));
+        sayAsync(ptr, filename, mWaitingVoice);
     }
 
     float SoundManager::getSaySoundLoudness(const MWWorld::ConstPtr &ptr) const
@@ -490,18 +510,7 @@ namespace MWSound
         if(!mOutput->isInitialized())
             return;
 
-        std::string voicefile = "Sound/"+filename;
-
-        mVFS->normalizeFilename(voicefile);
-        DecoderPtr decoder = loadVoice(voicefile);
-        if (!decoder)
-            return;
-
-        stopSay(MWWorld::ConstPtr());
-        StreamPtr sound = playVoice(decoder, osg::Vec3f(), true);
-        if(!sound) return;
-
-        mActiveSaySounds.emplace(MWWorld::ConstPtr(), std::move(sound));
+        sayAsync(MWWorld::ConstPtr(), filename, mActiveWaitingVoice);
     }
 
     bool SoundManager::sayDone(const MWWorld::ConstPtr &ptr) const
@@ -513,6 +522,13 @@ namespace MWSound
                 return false;
             return true;
         }
+
+        const auto isPtr = [&] (const Voice& v) { return v.mPtr == ptr; };
+
+        const auto activeWaiting = std::find_if(mActiveWaitingVoice.begin(), mActiveWaitingVoice.end(), isPtr);
+        if (activeWaiting != mActiveWaitingVoice.end())
+            return false;
+
         return true;
     }
 
@@ -534,11 +550,26 @@ namespace MWSound
             return false;
         }
 
+        const auto isPtr = [&] (const Voice& v) { return v.mPtr == ptr; };
+
+        const auto waiting = std::find_if(mWaitingVoice.begin(), mWaitingVoice.end(), isPtr);
+        if (waiting != mWaitingVoice.end())
+            return true;
+
+        const auto activeWaiting = std::find_if(mActiveWaitingVoice.begin(), mActiveWaitingVoice.end(), isPtr);
+        if (activeWaiting != mActiveWaitingVoice.end())
+            return true;
+
         return false;
     }
 
     void SoundManager::stopSay(const MWWorld::ConstPtr &ptr)
     {
+        const auto isPtr = [&] (const Voice& v) { return v.mPtr == ptr; };
+
+        mWaitingVoice.erase(std::remove_if(mWaitingVoice.begin(), mWaitingVoice.end(), isPtr), mWaitingVoice.end());
+        mActiveWaitingVoice.erase(std::remove_if(mActiveWaitingVoice.begin(), mActiveWaitingVoice.end(), isPtr), mActiveWaitingVoice.end());
+
         SaySoundMap::iterator snditer = mSaySoundsQueue.find(ptr);
         if(snditer != mSaySoundsQueue.end())
         {
@@ -1092,6 +1123,9 @@ namespace MWSound
         if(!mOutput->isInitialized() || mPlaybackPaused)
             return;
 
+        playAllVoicesFromCreatedDecoders();
+        playMusicFromCreatedDecoder();
+
         updateSounds(duration);
         if (MWBase::Environment::get().getStateManager()->getState()!=
             MWBase::StateManager::State_NoGame)
@@ -1179,6 +1213,10 @@ namespace MWSound
             mActiveSaySounds.erase(sayiter);
             mActiveSaySounds.emplace(updated, std::move(stream));
         }
+
+        for (auto& v : mWaitingVoice)
+            if (v.mPtr == old)
+                v.mPtr = updated;
     }
 
     // Default readAll implementation, for decoders that can't do anything
@@ -1248,6 +1286,15 @@ namespace MWSound
 
     void SoundManager::clear()
     {
+        abortAll(mWaitingVoice);
+        abortAll(mWaitingMusic);
+
+        waitForAll(mWaitingVoice);
+        waitForAll(mWaitingMusic);
+
+        mWaitingVoice.clear();
+        mWaitingMusic.clear();
+
         SoundManager::stopMusic();
 
         for(SoundMap::value_type &snd : mActiveSounds)
@@ -1277,5 +1324,128 @@ namespace MWSound
         mActiveTracks.clear();
         mPlaybackPaused = false;
         std::fill(std::begin(mPausedSoundTypes), std::end(mPausedSoundTypes), 0);
+    }
+
+    void SoundManager::sayAsync(const MWWorld::ConstPtr &ptr, const std::string &filename, std::vector<Voice>& waiting)
+    {
+        std::string voicefile = "Sound/" + filename;
+
+        mVFS->normalizeFilename(voicefile);
+
+        StreamPtr stream = getStreamRef();
+        const float baseVolume = volumeFromType(Type::Voice);
+
+        if (ptr == MWWorld::ConstPtr())
+        {
+            stream->init(1.0f, baseVolume, 1.0f, PlayMode::NoEnv | Type::Voice | Play_2D);
+        }
+        else
+        {
+            const MWBase::World* const world = MWBase::Environment::get().getWorld();
+            static const float minDistance = getMinDistance(*world);
+            static const float maxDistance = getMaxDistance(*world);
+            const osg::Vec3f pos = world->getActorHeadTransform(ptr).getTrans();
+
+            stream->init(pos, 1.0f, baseVolume, 1.0f, minDistance, maxDistance,
+                         PlayMode::Normal | Type::Voice | Play_3D);
+        }
+
+        const auto createDecoder = makeWorkItem([this, fileName = voicefile] { createVoiceDecoder(fileName); });
+        const auto deadline = std::chrono::steady_clock::now() + sCreateDecoderTimeout;
+        waiting.emplace_back(Voice {ptr, std::move(voicefile), std::move(stream), createDecoder, deadline});
+        mWorkQueue->addWorkItem(createDecoder);
+    }
+
+    void SoundManager::createVoiceDecoder(const std::string& voicefile)
+    {
+        {
+            const auto locked = mVoiceDecoders.lock();
+            if (locked->count(voicefile) > 0)
+                return;
+        }
+
+        DecoderPtr decoder = loadVoice(voicefile);
+        if (!decoder)
+            return;
+
+        mVoiceDecoders.lock()->emplace(voicefile, decoder);
+    }
+
+    void SoundManager::playAllVoicesFromCreatedDecoders()
+    {
+        std::move(mWaitingVoice.begin(), mWaitingVoice.end(), std::back_inserter(mActiveWaitingVoice));
+        mWaitingVoice.clear();
+
+        if (mActiveWaitingVoice.empty())
+            return;
+
+        const auto now = std::chrono::steady_clock::now();
+        for (const auto& voice : mActiveWaitingVoice)
+            if (voice.mDeadline <= now)
+                voice.mWorkItem->waitTillDone();
+
+        const auto locked = mVoiceDecoders.lock();
+
+        for (const auto& decoder : *locked)
+        {
+            const auto waiting = std::find_if(mActiveWaitingVoice.begin(), mActiveWaitingVoice.end(),
+                                              [&] (const Voice& v) { return v.mFileName == decoder.first; });
+
+            if (waiting == mActiveWaitingVoice.end())
+                continue;
+
+            const MWWorld::ConstPtr ptr = waiting->mPtr;
+            StreamPtr stream = std::move(waiting->mStream);
+
+            stopSay(ptr);
+
+            if (playVoice(decoder.second, ptr == MWMechanics::getPlayer(), stream.get()))
+            {
+                stream->setPlaying();
+                mActiveSaySounds.emplace(ptr, std::move(stream));
+            }
+        }
+
+        locked->clear();
+    }
+
+    void SoundManager::createMusicDecoder(const std::string& fileName)
+    {
+        {
+            const auto locked = mMusicDecoders.lock();
+            if (locked->count(fileName) > 0)
+                return;
+        }
+
+        DecoderPtr decoder = getDecoder();
+        decoder->open(fileName);
+
+        mMusicDecoders.lock()->emplace(fileName, decoder);
+    }
+
+    void SoundManager::playMusicFromCreatedDecoder()
+    {
+        if (mWaitingMusic.empty())
+            return;
+
+        if (mWaitingMusic.back().mDeadline <= std::chrono::steady_clock::now())
+            mWaitingMusic.back().mWorkItem->waitTillDone();
+
+        const auto locked = mMusicDecoders.lock();
+        const auto decoder = locked->find(mWaitingMusic.back().mFileName);
+
+        if (decoder == locked->end())
+            return;
+
+        stopMusic();
+
+        mMusic = getStreamRef();
+        mMusic->init(1.0f, volumeFromType(Type::Music), 1.0f,
+                     PlayMode::NoEnv|Type::Music|Play_2D);
+        mOutput->streamSound(decoder->second, mMusic.get());
+
+        abortAll(mWaitingMusic);
+        mWaitingMusic.clear();
+        locked->clear();
     }
 }
