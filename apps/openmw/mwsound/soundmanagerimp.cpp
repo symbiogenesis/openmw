@@ -592,7 +592,13 @@ namespace MWSound
             return nullptr;
 
         StreamPtr track = getStreamRef();
-        track->init(1.0f, volumeFromType(type), 1.0f, PlayMode::NoEnv|type|Play_2D);
+        track->init([&] {
+            SoundParams params;
+            params.mBaseVolume = volumeFromType(type);
+            params.mFlags = PlayMode::NoEnv | type | Play_2D;
+            return params;
+        } ());
+
         if(!mOutput->streamSound(decoder, track.get()))
             return nullptr;
 
@@ -629,7 +635,15 @@ namespace MWSound
         stopSound(sfx, MWWorld::ConstPtr());
 
         SoundPtr sound = getSoundRef();
-        sound->init(volume * sfx->mVolume, volumeFromType(type), pitch, mode|type|Play_2D);
+        sound->init([&] {
+            SoundParams params;
+            params.mVolume = volume * sfx->mVolume;
+            params.mBaseVolume = volumeFromType(type);
+            params.mPitch = pitch;
+            params.mFlags = mode | type | Play_2D;
+            return params;
+        } ());
+
         if(!mOutput->playSound(sound.get(), sfx->mHandle, offset))
             return nullptr;
 
@@ -664,15 +678,34 @@ namespace MWSound
 
         bool played;
         SoundPtr sound = getSoundRef();
+
         if(!(mode&PlayMode::NoPlayerLocal) && ptr == MWMechanics::getPlayer())
         {
-            sound->init(volume * sfx->mVolume, volumeFromType(type), pitch, mode|type|Play_2D);
+            sound->init([&] {
+                SoundParams params;
+                params.mVolume = volume * sfx->mVolume;
+                params.mBaseVolume = volumeFromType(type);
+                params.mPitch = pitch;
+                params.mFlags = mode | type | Play_2D;
+                return params;
+            } ());
+
             played = mOutput->playSound(sound.get(), sfx->mHandle, offset);
         }
         else
         {
-            sound->init(objpos, volume * sfx->mVolume, volumeFromType(type), pitch,
-                        sfx->mMinDist, sfx->mMaxDist, mode|type|Play_3D);
+            sound->init([&] {
+                SoundParams params;
+                params.mPos = objpos;
+                params.mVolume = volume * sfx->mVolume;
+                params.mBaseVolume = volumeFromType(type);
+                params.mPitch = pitch;
+                params.mMinDistance = sfx->mMinDist;
+                params.mMaxDistance = sfx->mMaxDist;
+                params.mFlags = mode | type | Play_3D;
+                return params;
+            } ());
+
             played = mOutput->playSound3D(sound.get(), sfx->mHandle, offset);
         }
         if(!played)
@@ -701,8 +734,18 @@ namespace MWSound
         if(!sfx) return nullptr;
 
         SoundPtr sound = getSoundRef();
-        sound->init(initialPos, volume * sfx->mVolume, volumeFromType(type), pitch,
-                    sfx->mMinDist, sfx->mMaxDist, mode|type|Play_3D);
+        sound->init([&] {
+            SoundParams params;
+            params.mPos = initialPos;
+            params.mVolume = volume * sfx->mVolume;
+            params.mBaseVolume = volumeFromType(type);
+            params.mPitch = pitch;
+            params.mMinDistance = sfx->mMinDist;
+            params.mMaxDistance = sfx->mMaxDist;
+            params.mFlags = mode | type | Play_3D;
+            return params;
+        } ());
+
         if(!mOutput->playSound3D(sound.get(), sfx->mHandle, offset))
             return nullptr;
 
@@ -1337,7 +1380,12 @@ namespace MWSound
 
         if (ptr == MWWorld::ConstPtr())
         {
-            stream->init(1.0f, baseVolume, 1.0f, PlayMode::NoEnv | Type::Voice | Play_2D);
+            stream->init([&] {
+                SoundParams params;
+                params.mBaseVolume = baseVolume;
+                params.mFlags = PlayMode::NoEnv | Type::Voice | Play_2D;
+                return params;
+            } ());
         }
         else
         {
@@ -1346,8 +1394,15 @@ namespace MWSound
             static const float maxDistance = getMaxDistance(*world);
             const osg::Vec3f pos = world->getActorHeadTransform(ptr).getTrans();
 
-            stream->init(pos, 1.0f, baseVolume, 1.0f, minDistance, maxDistance,
-                         PlayMode::Normal | Type::Voice | Play_3D);
+            stream->init([&] {
+                SoundParams params;
+                params.mPos = pos;
+                params.mBaseVolume = baseVolume;
+                params.mMinDistance = minDistance;
+                params.mMaxDistance = maxDistance;
+                params.mFlags = PlayMode::Normal | Type::Voice | Play_3D;
+                return params;
+            } ());
         }
 
         const auto createDecoder = makeWorkItem([this, fileName = voicefile] { createVoiceDecoder(fileName); });
@@ -1440,8 +1495,13 @@ namespace MWSound
         stopMusic();
 
         mMusic = getStreamRef();
-        mMusic->init(1.0f, volumeFromType(Type::Music), 1.0f,
-                     PlayMode::NoEnv|Type::Music|Play_2D);
+        mMusic->init([&] {
+            SoundParams params;
+            params.mBaseVolume = volumeFromType(Type::Music);
+            params.mFlags = PlayMode::NoEnv | Type::Music | Play_2D;
+            return params;
+        } ());
+
         mOutput->streamSound(decoder->second, mMusic.get());
 
         abortAll(mWaitingMusic);
