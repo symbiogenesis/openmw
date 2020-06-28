@@ -148,10 +148,23 @@ namespace MWSound
         std::vector<Music> mWaitingMusic;
         Misc::ScopeGuarded<std::map<std::string, DecoderPtr>> mMusicDecoders;
 
+        struct LoadingSound
+        {
+            MWWorld::ConstPtr mPtr;
+            std::string mSoundId;
+            float mOffset;
+            SoundPtr mSound;
+            osg::ref_ptr<SceneUtil::WorkItem> mWorkItem;
+            std::chrono::steady_clock::time_point mDeadline;
+        };
+
+        std::vector<LoadingSound> mLoadingSounds;
+        Misc::ScopeGuarded<std::map<std::string, Sound_Buffer*>> mLoadedSoundBuffers;
+
         Sound_Buffer *insertSound(const std::string &soundId, const ESM::Sound *sound);
 
         Sound_Buffer *lookupSound(const std::string &soundId) const;
-        Sound_Buffer *loadSound(const std::string &soundId);
+        Sound_Buffer *loadSoundSync(const std::string &soundId);
 
         // returns a decoder to start streaming, or nullptr if the sound was not found
         DecoderPtr loadVoice(const std::string &voicefile) const;
@@ -192,6 +205,12 @@ namespace MWSound
         void createMusicDecoder(const std::string& fileName);
 
         void playMusicFromCreatedDecoder();
+
+        void loadSound(const std::string &soundId);
+
+        void loadSoundAsync(const MWWorld::ConstPtr& ptr, std::string soundId, float offset, SoundPtr&& sound);
+
+        void playLoadedSounds();
 
         SoundManager(const SoundManager &rhs);
         SoundManager& operator=(const SoundManager &rhs);
