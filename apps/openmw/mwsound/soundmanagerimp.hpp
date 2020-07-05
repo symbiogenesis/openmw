@@ -7,10 +7,13 @@
 #include <deque>
 #include <map>
 #include <unordered_map>
+#include <chrono>
 
 #include <components/settings/settings.hpp>
-
+#include <components/misc/objectpool.hpp>
 #include <components/fallback/fallback.hpp>
+#include <components/sceneutil/workqueue.hpp>
+#include <components/misc/guarded.hpp>
 
 #include "../mwbase/soundmanager.hpp"
 
@@ -48,6 +51,9 @@ namespace MWSound
         Play_3D = 1<<31
     };
 
+    using SoundPtr = Misc::ObjectPtr<Sound>;
+    using StreamPtr = Misc::ObjectPtr<Stream>;
+
     class SoundManager : public MWBase::SoundManager
     {
         const VFS::Manager* mVFS;
@@ -79,25 +85,23 @@ namespace MWSound
         typedef std::deque<Sound_Buffer*> SoundList;
         SoundList mUnusedBuffers;
 
-        std::unique_ptr<std::deque<Sound>> mSounds;
-        std::vector<Sound*> mUnusedSounds;
+        Misc::ObjectPool<Sound> mSounds;
 
-        std::unique_ptr<std::deque<Stream>> mStreams;
-        std::vector<Stream*> mUnusedStreams;
+        Misc::ObjectPool<Stream> mStreams;
 
-        typedef std::pair<MWBase::Sound*,Sound_Buffer*> SoundBufferRefPair;
+        typedef std::pair<SoundPtr, Sound_Buffer*> SoundBufferRefPair;
         typedef std::vector<SoundBufferRefPair> SoundBufferRefPairList;
         typedef std::map<MWWorld::ConstPtr,SoundBufferRefPairList> SoundMap;
         SoundMap mActiveSounds;
 
-        typedef std::map<MWWorld::ConstPtr,Stream*> SaySoundMap;
+        typedef std::map<MWWorld::ConstPtr, StreamPtr> SaySoundMap;
         SaySoundMap mSaySoundsQueue;
         SaySoundMap mActiveSaySounds;
 
-        typedef std::vector<Stream*> TrackList;
+        typedef std::vector<StreamPtr> TrackList;
         TrackList mActiveTracks;
 
-        Stream *mMusic;
+        StreamPtr mMusic;
         std::string mCurrentPlaylist;
 
         bool mListenerUnderwater;
@@ -119,18 +123,56 @@ namespace MWSound
 
         const ESM::Cell *mLastCell = nullptr;
 
+        osg::ref_ptr<SceneUtil::WorkQueue> mWorkQueue;
+
+        struct Voice
+        {
+            MWWorld::ConstPtr mPtr;
+            std::string mFileName;
+            StreamPtr mStream;
+            osg::ref_ptr<SceneUtil::WorkItem> mWorkItem;
+            std::chrono::steady_clock::time_point mDeadline;
+        };
+
+        std::vector<Voice> mWaitingVoice;
+        std::vector<Voice> mActiveWaitingVoice;
+        Misc::ScopeGuarded<std::map<std::string, DecoderPtr>> mVoiceDecoders;
+
+        struct Music
+        {
+            std::string mFileName;
+            osg::ref_ptr<SceneUtil::WorkItem> mWorkItem;
+            std::chrono::steady_clock::time_point mDeadline;
+        };
+
+        std::vector<Music> mWaitingMusic;
+        Misc::ScopeGuarded<std::map<std::string, DecoderPtr>> mMusicDecoders;
+
+        struct LoadingSound
+        {
+            MWWorld::ConstPtr mPtr;
+            std::string mSoundId;
+            float mOffset;
+            SoundPtr mSound;
+            osg::ref_ptr<SceneUtil::WorkItem> mWorkItem;
+            std::chrono::steady_clock::time_point mDeadline;
+        };
+
+        std::vector<LoadingSound> mLoadingSounds;
+        Misc::ScopeGuarded<std::map<std::string, Sound_Buffer*>> mLoadedSoundBuffers;
+
         Sound_Buffer *insertSound(const std::string &soundId, const ESM::Sound *sound);
 
         Sound_Buffer *lookupSound(const std::string &soundId) const;
-        Sound_Buffer *loadSound(const std::string &soundId);
+        Sound_Buffer *loadSoundSync(const std::string &soundId);
 
         // returns a decoder to start streaming, or nullptr if the sound was not found
-        DecoderPtr loadVoice(const std::string &voicefile);
+        DecoderPtr loadVoice(const std::string &voicefile) const;
 
-        Sound *getSoundRef();
-        Stream *getStreamRef();
+        SoundPtr getSoundRef();
+        StreamPtr getStreamRef();
 
-        Stream *playVoice(DecoderPtr decoder, const osg::Vec3f &pos, bool playlocal);
+        bool playVoice(DecoderPtr decoder, bool playlocal, Stream* stream);
 
         void streamMusicFull(const std::string& filename);
         void advanceMusic(const std::string& filename);
@@ -154,11 +196,27 @@ namespace MWSound
         std::pair<WaterSoundAction, Sound_Buffer*> getWaterSoundAction(const WaterSoundUpdate& update,
                                                                        const ESM::Cell* cell) const;
 
+        void sayAsync(const MWWorld::ConstPtr &ptr, const std::string &filename, std::vector<Voice>& waiting);
+
+        void createVoiceDecoder(const std::string& voicefile);
+
+        void playAllVoicesFromCreatedDecoders();
+
+        void createMusicDecoder(const std::string& fileName);
+
+        void playMusicFromCreatedDecoder();
+
+        void loadSound(const std::string &soundId);
+
+        void loadSoundAsync(const MWWorld::ConstPtr& ptr, std::string soundId, float offset, SoundPtr&& sound);
+
+        void playLoadedSounds();
+
         SoundManager(const SoundManager &rhs);
         SoundManager& operator=(const SoundManager &rhs);
 
     protected:
-        DecoderPtr getDecoder();
+        DecoderPtr getDecoder() const;
         friend class OpenAL_Output;
 
         void stopSound(Sound_Buffer *sfx, const MWWorld::ConstPtr &ptr);
@@ -195,13 +253,13 @@ namespace MWSound
         ///< Say some text, without an actor ref
         /// \param filename name of a sound file in "Sound/" in the data directory.
 
-        virtual bool sayActive(const MWWorld::ConstPtr &reference=MWWorld::ConstPtr()) const;
+        virtual bool sayActive(const MWWorld::ConstPtr &reference) const;
         ///< Is actor not speaking?
 
-        virtual bool sayDone(const MWWorld::ConstPtr &reference=MWWorld::ConstPtr()) const;
+        virtual bool sayDone(const MWWorld::ConstPtr &reference) const;
         ///< For scripting backward compatibility
 
-        virtual void stopSay(const MWWorld::ConstPtr &reference=MWWorld::ConstPtr());
+        virtual void stopSay(const MWWorld::ConstPtr &reference);
         ///< Stop an actor speaking
 
         virtual float getSaySoundLoudness(const MWWorld::ConstPtr& reference) const;
@@ -220,18 +278,19 @@ namespace MWSound
         /// returned by \ref playTrack). Only intended to be called by the track
         /// decoder's read method.
 
-        virtual Sound *playSound(const std::string& soundId, float volume, float pitch, Type type=Type::Sfx, PlayMode mode=PlayMode::Normal, float offset=0);
+        virtual Sound *playSound(const std::string& soundId, float volume, float pitch,
+                                 Type type=Type::Sfx, PlayMode mode=PlayMode::Normal,
+                                 float offset=0);
         ///< Play a sound, independently of 3D-position
         ///< @param offset Number of seconds into the sound to start playback.
 
         virtual Sound *playSound3D(const MWWorld::ConstPtr &reference, const std::string& soundId,
-                                   float volume, float pitch, Type type=Type::Sfx,
-                                   PlayMode mode=PlayMode::Normal, float offset=0);
+                                   float volume, float pitch, Type type, PlayMode mode, float offset);
         ///< Play a 3D sound attached to an MWWorld::Ptr. Will be updated automatically with the Ptr's position, unless Play_NoTrack is specified.
         ///< @param offset Number of seconds into the sound to start playback.
 
         virtual Sound *playSound3D(const osg::Vec3f& initialPos, const std::string& soundId,
-                                   float volume, float pitch, Type type, PlayMode mode, float offset=0);
+                                   float volume, float pitch, Type type, PlayMode mode, float offset);
         ///< Play a 3D sound at \a initialPos. If the sound should be moving, it must be updated using Sound::setPosition.
         ///< @param offset Number of seconds into the sound to start playback.
 
@@ -257,7 +316,7 @@ namespace MWSound
         virtual bool getSoundPlaying(const MWWorld::ConstPtr &reference, const std::string& soundId) const;
         ///< Is the given sound currently playing on the given object?
 
-        virtual void pauseSounds(MWSound::BlockerType blocker, int types=int(Type::Mask));
+        virtual void pauseSounds(MWSound::BlockerType blocker, int types);
         ///< Pauses all currently playing sounds, including music.
 
         virtual void resumeSounds(MWSound::BlockerType blocker);

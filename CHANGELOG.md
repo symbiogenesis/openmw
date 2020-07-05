@@ -9,6 +9,7 @@
     Bug #4021: Attributes and skills are not stored as floats
     Bug #4623: Corprus implementation is incorrect
     Bug #4774: Guards are ignorant of an invisible player that tries to attack them
+    Bug #4880: Single frames are slowed down by audio loading
     Bug #5108: Savegame bloating due to inefficient fog textures format
     Bug #5165: Active spells should use real time intead of timestamps
     Bug #5358: ForceGreeting always resets the dialogue window completely
